@@ -12,8 +12,8 @@ outputsize = 'full'
 url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval={interval}&outputsize={outputsize}&apikey={api_key}'
 time_period = '40'
 series_type = 'close'
-#url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-#url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
+url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
+url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
 
 EPOCH_NUM = 50
 
@@ -21,27 +21,54 @@ EPOCH_NUM = 50
 response = requests.get(url)
 data = response.json()
 intraday_data = data['Time Series (15min)']
-#response = requests.get(url_rsi)
-#data = response.json()
-#rsi_data = data['Technical Analysis: RSI']
-#response = requests.get(url_stoch)
-#data = response.json()
-#stoch_data = data['Technical Analysis: STOCH']
+response = requests.get(url_rsi)
+data = response.json()
+rsi_data = data['Technical Analysis: RSI']
+response = requests.get(url_stoch)
+data = response.json()
+stoch_data = data['Technical Analysis: STOCH']
 
 # Extract closing prices
 closing_prices = [float(data_point['4. close']) for data_point in intraday_data.values()]
-#volumes = [float(data_point['5. volume']) for data_point in intraday_data.values()]
-#rsi_indexes = [float(data_point['RSI']) for data_point in rsi_data.values()]
-#stoch_indexes_k = [float(data_point['SlowK']) for data_point in stoch_data.values()]
-#stoch_indexes_d = [float(data_point['SlowD']) for data_point in stoch_data.values()]
+volumes = [float(data_point['5. volume']) for data_point in intraday_data.values()]
+rsi_indexes = [float(data_point['RSI']) for data_point in rsi_data.values()]
+stoch_indexes_k = [float(data_point['SlowK']) for data_point in stoch_data.values()]
+stoch_indexes_d = [float(data_point['SlowD']) for data_point in stoch_data.values()]
+
+print(closing_prices.__len__())
+print(volumes.__len__())
+print(rsi_indexes.__len__())
+print(stoch_indexes_k.__len__())
+print(stoch_indexes_d.__len__())
 
 # Prepare data for supervised learning
 X = []
 y = []
 window_size = 20  # Adjust the window size as needed
+num_feature_classes = 5
 
-for i in range(len(closing_prices) - window_size):
-    X.append(closing_prices[i:i+window_size])
+length = min(len(closing_prices), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
+
+for i in range(length - window_size):
+    feature_vector = []
+
+    # Append closing prices
+    feature_vector.append(closing_prices[i:i + window_size])
+
+    # Append volumes
+    feature_vector.append(volumes[i:i + window_size])
+
+    # Append RSI values
+    feature_vector.append(rsi_indexes[i:i + window_size])
+
+    # Append Stochastic Oscillator values (K and D)
+    feature_vector.append(stoch_indexes_k[i:i + window_size])
+    feature_vector.append(stoch_indexes_d[i:i + window_size])
+
+    #
+    X.append(feature_vector)
+    #for j in range(num_feature_classes):
+    #    X[j] = np.array()
     y.append(closing_prices[i+window_size])
 
 X = np.array(X)
@@ -57,7 +84,8 @@ models = []
 
 # Create a simple neural network model
 default_model = tf.keras.Sequential([
-    tf.keras.layers.Dense(256, activation='relu', input_shape=(window_size,)),
+    tf.keras.layers.Dense(256, activation='relu', input_shape=(num_feature_classes,window_size)),
+    tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(1)  # Single output neuron for price prediction
 ])
 
