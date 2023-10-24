@@ -15,7 +15,7 @@ series_type = 'close'
 url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
 
-EPOCH_NUM = 50
+EPOCH_NUM = 250
 
 # Fetch intraday stock data
 response = requests.get(url)
@@ -80,22 +80,24 @@ split_index = int(len(X) * split_ratio)
 X_train, X_test = X[:split_index], X[split_index:]
 y_train, y_test = y[:split_index], y[split_index:]
 
-models = []
+weight_matrix = [] # to develop
 
 # Create a simple neural network model
-default_model = tf.keras.Sequential([
-    tf.keras.layers.Dense(256, activation='relu', input_shape=(num_feature_classes,window_size)),
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(num_feature_classes*8, activation='relu',kernel_initializer=tf.keras.initializers.RandomUniform(minval=0.0, maxval=0.5), input_shape=(num_feature_classes,window_size)),
+    tf.keras.layers.Dense(256, activation = 'relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=1.0, stddev=0.5, seed=None)),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(1)  # Single output neuron for price prediction
 ])
 
 # Compile the model
-custom_learning_rate = 0.00001  # You can adjust this value
+custom_learning_rate = 0.05  # You can adjust this value
 custom_optimizer = tf.keras.optimizers.Adam(learning_rate=custom_learning_rate)
-default_model.compile(optimizer=custom_optimizer, loss='mean_squared_error')
+model.compile(optimizer=custom_optimizer, loss='mean_squared_error')
 
 # Train the model
-model = default_model
 model.fit(X_train, y_train, epochs=EPOCH_NUM, batch_size=64, validation_data=(X_test, y_test))
 
 # Make predictions
@@ -150,8 +152,9 @@ print("Predictions: ")
 print(predictions)
 '''
 
-print(X.shape)
-print(X)
+#print(X.shape)
+#print(X)
+print (model.get_weights())
 
 
 ### model.save('my_model.h5')
