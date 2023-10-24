@@ -1,9 +1,11 @@
+### ### ### INTRODUCTION
+### Imports
 import numpy as np
 import requests
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-# Alpha Vantage API Key and endpoint
+### Alpha Vantage API handling
 import config
 api_key = config.api_key
 symbol = 'GOOGL'
@@ -15,9 +17,13 @@ series_type = 'close'
 url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
 
+### CONSTANTS
 EPOCH_NUM = 250
+custom_learning_rate = 0.05
 
-# Fetch intraday stock data
+### ### ### DATA
+
+### Fetch stock data
 response = requests.get(url)
 data = response.json()
 intraday_data = data['Time Series (15min)']
@@ -28,25 +34,18 @@ response = requests.get(url_stoch)
 data = response.json()
 stoch_data = data['Technical Analysis: STOCH']
 
-# Extract closing prices
+### Extract closing prices
 closing_prices = [float(data_point['4. close']) for data_point in intraday_data.values()]
 volumes = [float(data_point['5. volume']) for data_point in intraday_data.values()]
 rsi_indexes = [float(data_point['RSI']) for data_point in rsi_data.values()]
 stoch_indexes_k = [float(data_point['SlowK']) for data_point in stoch_data.values()]
 stoch_indexes_d = [float(data_point['SlowD']) for data_point in stoch_data.values()]
 
-print(closing_prices.__len__())
-print(volumes.__len__())
-print(rsi_indexes.__len__())
-print(stoch_indexes_k.__len__())
-print(stoch_indexes_d.__len__())
-
-# Prepare data for supervised learning
+### Prepare data for supervised learning
 X = []
 y = []
 window_size = 20  # Adjust the window size as needed
 num_feature_classes = 5
-
 length = min(len(closing_prices), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
 
 for i in range(length - window_size):
@@ -65,22 +64,21 @@ for i in range(length - window_size):
     feature_vector.append(stoch_indexes_k[i:i + window_size])
     feature_vector.append(stoch_indexes_d[i:i + window_size])
 
-    #
     X.append(feature_vector)
-    #for j in range(num_feature_classes):
-    #    X[j] = np.array()
     y.append(closing_prices[i+window_size])
 
 X = np.array(X)
 y = np.array(y)
 
-# Split data into training and testing sets
+### Split data into training and testing sets
 split_ratio = 0.8
 split_index = int(len(X) * split_ratio)
 X_train, X_test = X[:split_index], X[split_index:]
 y_train, y_test = y[:split_index], y[split_index:]
 
-weight_matrix = [] # to develop
+#weight_matrix = [] # to develop
+
+### ### ### MODEL
 
 # Create a simple neural network model
 model = tf.keras.Sequential([
@@ -93,7 +91,6 @@ model = tf.keras.Sequential([
 ])
 
 # Compile the model
-custom_learning_rate = 0.05  # You can adjust this value
 custom_optimizer = tf.keras.optimizers.Adam(learning_rate=custom_learning_rate)
 model.compile(optimizer=custom_optimizer, loss='mean_squared_error')
 
@@ -103,23 +100,14 @@ model.fit(X_train, y_train, epochs=EPOCH_NUM, batch_size=64, validation_data=(X_
 # Make predictions
 predictions = model.predict(X_test)
 
-# Evaluate the model (you can use various metrics to evaluate the model)
+# Evaluate the model
 loss = model.evaluate(X_test, y_test)
 print(f'Test Loss: {loss}')
 
-# You can use the trained model to make future predictions as well
-
-x_time = np.arange(len(X_train[0,:]))
-
 #print(predictions)
-
+### PLOTS
 diff = predictions[:,0] - y_test
 plt.plot(diff, c='g', label='Delta')
-
-#plt.plot(predictions,c='b',label='Pred')
-
-#plt.plot(X_train[0,:],c='r',label='actual')
-#plt.scatter(x_time,X_train[0,:], window_size ,marker='x',c='r',label='actual')
 plt.title('GOOGL')
 plt.ylabel('Prediction error')
 plt.xlabel('Time')
@@ -127,8 +115,6 @@ plt.legend()
 plt.show()
 
 plt.plot(predictions,c='b',label='Pred')
-
-#plt.plot(X_train[0,:],c='r',label='actual')
 plt.plot(y_test,c='r',label='actual')
 plt.title('GOOGL')
 plt.ylabel('Price')
@@ -136,7 +122,9 @@ plt.xlabel('Time')
 plt.legend()
 plt.show()
 
-#print(predictions)
+###
+### DEBUG SECTION
+###
 '''
 print(X.shape)
 print(y.shape)
