@@ -4,6 +4,7 @@ import numpy as np
 import requests
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from sklearn import preprocessing
 
 ### Alpha Vantage API handling
 import config
@@ -19,7 +20,7 @@ url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&i
 
 ### CONSTANTS
 EPOCH_NUM = 250
-custom_learning_rate = 0.05
+custom_learning_rate = 0.01
 
 ### ### ### DATA
 
@@ -46,7 +47,14 @@ X = []
 y = []
 window_size = 20  # Adjust the window size as needed
 num_feature_classes = 5
-length = min(len(closing_prices), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
+length = min(len(closing_prices), len(volumes), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
+
+# Standardization of data
+volumes_np = np.array(volumes).reshape(-1, 1)
+scaler = preprocessing.StandardScaler().fit(volumes_np)
+volumes_np = scaler.transform(volumes_np)
+volumes = volumes_np.reshape(volumes.__len__()).tolist()
+print(volumes)
 
 for i in range(length - window_size):
     feature_vector = []
@@ -76,14 +84,12 @@ split_index = int(len(X) * split_ratio)
 X_train, X_test = X[:split_index], X[split_index:]
 y_train, y_test = y[:split_index], y[split_index:]
 
-#weight_matrix = [] # to develop
-
 ### ### ### MODEL
 
 # Create a simple neural network model
 model = tf.keras.Sequential([
-    tf.keras.layers.Dense(num_feature_classes*8, activation='relu',kernel_initializer=tf.keras.initializers.RandomUniform(minval=0.0, maxval=0.5), input_shape=(num_feature_classes,window_size)),
-    tf.keras.layers.Dense(256, activation = 'relu', kernel_initializer=tf.keras.initializers.RandomNormal(mean=1.0, stddev=0.5, seed=None)),
+    tf.keras.layers.Dense(num_feature_classes*8, activation='relu', input_shape=(num_feature_classes,window_size)),
+    tf.keras.layers.Dense(256, activation = 'relu'),
     tf.keras.layers.Dense(64, activation='relu'),
     tf.keras.layers.Dense(32, activation='relu'),
     tf.keras.layers.Flatten(),
@@ -142,7 +148,7 @@ print(predictions)
 
 #print(X.shape)
 #print(X)
-print (model.get_weights())
+#print (model.get_weights())
 
 
 ### model.save('my_model.h5')

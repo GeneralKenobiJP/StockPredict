@@ -1,0 +1,1 @@
+Lowest loss achieved: 0.35949987173080444 [24.10] (EPOCH_NUM=250, custom_learning_rate = 0.01)
