@@ -5,9 +5,9 @@ import requests
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
+import config
 
 ### Alpha Vantage API handling
-import config
 api_key = config.api_key
 symbol = 'GOOGL'
 interval = '15min'  # Adjust the interval as needed
@@ -21,6 +21,23 @@ url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&i
 ### CONSTANTS
 EPOCH_NUM = 250
 custom_learning_rate = 0.01
+
+### ### ### CUSTOM FUNCTIONS
+def standardize_list(list):
+    """
+    Given a Python list of data of 1 type, standardize it
+    using scikit-learn and return a standardized Python list
+    :param list:
+    list -- A Python list of data, 1 dimensional
+    :return:
+    A standardized Python list of Data, 1 dimensional,
+    having the length of list param
+    """
+
+    list_np = np.array(list).reshape(-1,1)
+    scaler = preprocessing.StandardScaler().fit(list_np)
+    list_np = scaler.transform(list_np)
+    return list_np.reshape(list.__len__()).tolist()
 
 ### ### ### DATA
 
@@ -50,11 +67,10 @@ num_feature_classes = 5
 length = min(len(closing_prices), len(volumes), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
 
 # Standardization of data
-volumes_np = np.array(volumes).reshape(-1, 1)
-scaler = preprocessing.StandardScaler().fit(volumes_np)
-volumes_np = scaler.transform(volumes_np)
-volumes = volumes_np.reshape(volumes.__len__()).tolist()
-print(volumes)
+volumes = standardize_list(volumes)
+rsi_indexes = standardize_list(rsi_indexes)
+stoch_indexes_k = standardize_list(stoch_indexes_k)
+stoch_indexes_d = standardize_list(stoch_indexes_d)
 
 for i in range(length - window_size):
     feature_vector = []

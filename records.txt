@@ -1,1 +1,3 @@
-Lowest loss achieved: 0.35949987173080444 [24.10] (EPOCH_NUM=250, custom_learning_rate = 0.01)
+Lowest loss achieved: 2.
+1. Test Loss: 0.35949987173080444 [24.10] (EPOCH_NUM=250, custom_learning_rate = 0.01)
+2. Test Loss: 0.2578347623348236 [25.10] (EPOCH_NUM=250, custom_learning_rate = 0.01)
