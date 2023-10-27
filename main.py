@@ -17,6 +17,8 @@ time_period = '40'
 series_type = 'close'
 url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
+url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
+url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 ### CONSTANTS
 EPOCH_NUM = 250
@@ -51,6 +53,12 @@ rsi_data = data['Technical Analysis: RSI']
 response = requests.get(url_stoch)
 data = response.json()
 stoch_data = data['Technical Analysis: STOCH']
+response = requests.get(url_sma)
+data = response.json()
+sma_data = data['Technical Analysis: SMA']
+response = requests.get(url_ema)
+data = response.json()
+ema_data = data['Technical Analysis: EMA']
 
 ### Extract closing prices
 closing_prices = [float(data_point['4. close']) for data_point in intraday_data.values()]
@@ -58,19 +66,23 @@ volumes = [float(data_point['5. volume']) for data_point in intraday_data.values
 rsi_indexes = [float(data_point['RSI']) for data_point in rsi_data.values()]
 stoch_indexes_k = [float(data_point['SlowK']) for data_point in stoch_data.values()]
 stoch_indexes_d = [float(data_point['SlowD']) for data_point in stoch_data.values()]
+sma_indexes = [float(data_point['SMA']) for data_point in sma_data.values()]
+ema_indexes = [float(data_point['EMA']) for data_point in ema_data.values()]
 
 ### Prepare data for supervised learning
 X = []
 y = []
 window_size = 20  # Adjust the window size as needed
-num_feature_classes = 5
-length = min(len(closing_prices), len(volumes), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k))
+num_feature_classes = 7
+length = min(len(closing_prices), len(volumes), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k), len(sma_data))
 
 # Standardization of data
 volumes = standardize_list(volumes)
 rsi_indexes = standardize_list(rsi_indexes)
 stoch_indexes_k = standardize_list(stoch_indexes_k)
 stoch_indexes_d = standardize_list(stoch_indexes_d)
+sma_indexes = standardize_list(sma_indexes)
+ema_indexes = standardize_list(ema_indexes)
 
 for i in range(length - window_size):
     feature_vector = []
@@ -87,6 +99,9 @@ for i in range(length - window_size):
     # Append Stochastic Oscillator values (K and D)
     feature_vector.append(stoch_indexes_k[i:i + window_size])
     feature_vector.append(stoch_indexes_d[i:i + window_size])
+
+    feature_vector.append(sma_indexes[i:i + window_size])
+    feature_vector.append(ema_indexes[i:i + window_size])
 
     X.append(feature_vector)
     y.append(closing_prices[i+window_size])
