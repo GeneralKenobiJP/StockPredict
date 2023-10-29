@@ -4,6 +4,7 @@ import time
 import requests
 import numpy as np
 from sklearn import preprocessing
+import json
 
 import config
 
@@ -21,6 +22,14 @@ url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&inter
 url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 ### ### ### CUSTOM FUNCTIONS
+def parse_filename(filename):
+    """
+    Given an initial intended filename, the function parses it for
+    forbidden chars (":") and converts to "-"
+    :param filename: Initial intended filename (string)
+    :return: Correct filename
+    """
+    return filename.replace(":","-")
 def standardize_list(list):
     """
     Given a Python list of data of 1 type, standardize it
@@ -36,6 +45,15 @@ def standardize_list(list):
     scaler = preprocessing.StandardScaler().fit(list_np)
     list_np = scaler.transform(list_np)
     return list_np.reshape(list.__len__()).tolist()
+
+def fetch_data_from_file(file_path):
+    """
+    Fetches data from a selected file
+    :param file_path: selected file
+    :return: JSON data
+    """
+    with open(file_path, 'r') as json_file:
+        return json.load(json_file)
 
 def fetch_data(url, func=None):
     """
@@ -96,7 +114,8 @@ def get_features_np(feature_list):
 
     return X,y
 
-def retrieve_features(url_list, desc_list, data_point_desc_list, should_standardize):
+def retrieve_features(url_list, desc_list, data_point_desc_list, should_standardize,
+                      use_filedata=False, save_data=True):
     """
     Given a description of data and urls, it retrieves the list of
     data points we are interested in
@@ -105,14 +124,32 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
     :param data_point_desc_list: list of names of data points
     :param should_standardize: list of booleans for whether data should
     be standardized or not
+    :param use_filedata: If true, it loads data from a file
+    (it had previously been imported from Alpha Vantage).
+    Otherwise, it loads data from Alpha Vantage API
+    False, by default.
+    :param save_data: If true, it saves data to a file.
+    A prerequisite for this is to have use_filedata=False.
+    True, be default.
     :return: list of data points
     """
+    FILE_PATH = "data/"
+    WRITE_MODE = "w"
     retrieved_data = []
     retrieved_data_points = []
     current_response = None
     for i in range(url_list.__len__()):
         if i == 0 or not url_list[i].__eq__(url_list[i-1]):
-            current_response = fetch_data(url_list[i])
+            if not use_filedata:
+                current_response = fetch_data(url_list[i])
+            else:
+                current_response = fetch_data_from_file(parse_filename(FILE_PATH+desc_list[i]))
+
+            if save_data:
+                if use_filedata:
+                    raise Exception("use_filedata and save_data are mutually exclusive")
+                with open(parse_filename(FILE_PATH+desc_list[i]), WRITE_MODE) as json_file:
+                    json.dump(current_response, json_file)
 
         retrieved_data.append(current_response[desc_list[i]])
 
@@ -125,12 +162,19 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
 
     return retrieved_data_points
 
-def retrieve_data():
+def retrieve_data(use_filedata=False, save_data=True):
     """
     Main API function in data.py
     Retrieve preselected data to fed into a model
     Feature types:
     Closing prices, volumes, RSI, Stoch, SMA, EMA
+    :param use_filedata: If true, it loads data from a file
+    (it had previously been imported from Alpha Vantage).
+    Otherwise, it loads data from Alpha Vantage API
+    False, by default.
+    :param save_data: If true, it saves data to a file.
+    A prerequisite for this is to have use_filedata=False.
+    True, be default.
     :return: model data X,y (numpy arrays).
     Processed and ready to be fed into a model
     """
@@ -176,6 +220,10 @@ def retrieve_data():
 
     return X,y
 
-X,y = retrieve_data()
+X,y = retrieve_data(False, True)
+#X,y = retrieve_data(True, False)
 print(X)
 print(y)
+
+#{'Information': 'Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instantly remove all daily rate limits.'}
+#Should test for that
