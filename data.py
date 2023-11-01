@@ -17,11 +17,78 @@ url_prices = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&s
 time_period = '40'
 series_type = 'close'
 url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
+url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&time_period={time_period}&apikey={api_key}'
 url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 ### ### ### CUSTOM FUNCTIONS
+def create_url(function, symbol, interval, month, time_period, series_type='close'):
+    """
+    Creates an url query string for Alpha Vantage API, using provided parameters
+    :param function: API function (TIME_SERIES_INTRADAY for example)
+    :param symbol: Stock ticker (GOOGL, for example)
+    :param interval: Chosen time interval for date (15min for example)
+    :param month: Which month do we want our data from
+    :param time_period: Time period used for calculation of certain indicators (integer)
+    :param series_type: close/open/high/low (typically close)
+    :return: URL for Alpha Vantage API
+    """
+    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
+def create_url(function, symbol, interval, month, series_type='close'):
+    """
+    Creates an url query string for Alpha Vantage API, using provided parameters
+    :param function: API function (TIME_SERIES_INTRADAY for example)
+    :param symbol: Stock ticker (GOOGL, for example)
+    :param interval: Chosen time interval for date (15min for example)
+    :param month: Which month do we want our data from
+    :param series_type: close/open/high/low (typically close)
+    :return: URL for Alpha Vantage API
+    """
+    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&series_type={series_type}&apikey={api_key}'
+def create_url(function, symbol, interval, month, time_period):
+    """
+    Creates an url query string for Alpha Vantage API, using provided parameters
+    :param function: API function (TIME_SERIES_INTRADAY for example)
+    :param symbol: Stock ticker (GOOGL, for example)
+    :param interval: Chosen time interval for date (15min for example)
+    :param month: Which month do we want our data from
+    :param time_period: Time period used for calculation of certain indicators (integer)
+    :return: URL for Alpha Vantage API
+    """
+    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&apikey={api_key}'
+
+def create_url(function, symbol, interval, month):
+    """
+    Creates an url query string for Alpha Vantage API, using provided parameters
+    :param function: API function (TIME_SERIES_INTRADAY for example)
+    :param symbol: Stock ticker (GOOGL, for example)
+    :param interval: Chosen time interval for data (15min for example)
+    :param month: Which month do we want our data from
+    :return: URL for Alpha Vantage API
+    """
+    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&apikey={api_key}'
+
+def get_urls(symbol, interval, month):
+    """
+    Retrieves urls that we usually want our model to get
+    THIS FUNCTION WILL BE MODIFIED BASED ON OUR CURRENT DATA NEEDS
+    FOR THE MODEL
+    :param symbol: Stock ticker (GOOGL for example)
+    :param interval: Chosen time interval for data (15min for example)
+    :param month: Which month do we want our data from
+    :return: List of urls for Alpha Vantage API
+    """
+    urls = []
+    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close'))
+    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close'))
+    urls.append(create_url('RSI', symbol, interval, month, time_period=40, series_type='close'))
+    urls.append(create_url('STOCH', symbol, interval, month, time_period=40))
+    urls.append(create_url('STOCH', symbol, interval, month, time_period=40))
+    urls.append(create_url('SMA', symbol, interval, month, time_period=40, series_type='close'))
+    urls.append(create_url('EMA', symbol, interval, month, time_period=40, series_type='close'))
+
+    return urls
+
 def parse_filename(filename):
     """
     Given an initial intended filename, the function parses it for
