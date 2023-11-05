@@ -1,5 +1,7 @@
 ### Imports
 import time
+import datetime
+from dateutil.relativedelta import relativedelta
 
 import requests
 import numpy as np
@@ -22,7 +24,7 @@ url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&inter
 url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 ### ### ### CUSTOM FUNCTIONS
-def create_url(function, symbol, interval, month, time_period, series_type='close'):
+def create_url(function, symbol, interval, month, time_period=None, series_type=None):
     """
     Creates an url query string for Alpha Vantage API, using provided parameters
     :param function: API function (TIME_SERIES_INTRADAY for example)
@@ -30,43 +32,19 @@ def create_url(function, symbol, interval, month, time_period, series_type='clos
     :param interval: Chosen time interval for date (15min for example)
     :param month: Which month do we want our data from
     :param time_period: Time period used for calculation of certain indicators (integer)
+    OPTIONAL
     :param series_type: close/open/high/low (typically close)
+    OPTIONAL
     :return: URL for Alpha Vantage API
     """
-    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-def create_url(function, symbol, interval, month, series_type='close'):
-    """
-    Creates an url query string for Alpha Vantage API, using provided parameters
-    :param function: API function (TIME_SERIES_INTRADAY for example)
-    :param symbol: Stock ticker (GOOGL, for example)
-    :param interval: Chosen time interval for date (15min for example)
-    :param month: Which month do we want our data from
-    :param series_type: close/open/high/low (typically close)
-    :return: URL for Alpha Vantage API
-    """
-    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&series_type={series_type}&apikey={api_key}'
-def create_url(function, symbol, interval, month, time_period):
-    """
-    Creates an url query string for Alpha Vantage API, using provided parameters
-    :param function: API function (TIME_SERIES_INTRADAY for example)
-    :param symbol: Stock ticker (GOOGL, for example)
-    :param interval: Chosen time interval for date (15min for example)
-    :param month: Which month do we want our data from
-    :param time_period: Time period used for calculation of certain indicators (integer)
-    :return: URL for Alpha Vantage API
-    """
-    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&apikey={api_key}'
+    if time_period is None and series_type is None:
+        return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&apikey={api_key}'
+    if series_type is None:
+        return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&apikey={api_key}'
+    if time_period is None:
+        return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&series_type={series_type}&apikey={api_key}'
 
-def create_url(function, symbol, interval, month):
-    """
-    Creates an url query string for Alpha Vantage API, using provided parameters
-    :param function: API function (TIME_SERIES_INTRADAY for example)
-    :param symbol: Stock ticker (GOOGL, for example)
-    :param interval: Chosen time interval for data (15min for example)
-    :param month: Which month do we want our data from
-    :return: URL for Alpha Vantage API
-    """
-    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&apikey={api_key}'
+    return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 def get_urls(symbol, interval, month):
     """
@@ -86,6 +64,30 @@ def get_urls(symbol, interval, month):
     urls.append(create_url('STOCH', symbol, interval, month, time_period=40))
     urls.append(create_url('SMA', symbol, interval, month, time_period=40, series_type='close'))
     urls.append(create_url('EMA', symbol, interval, month, time_period=40, series_type='close'))
+
+    return urls
+
+def get_urls_time_range(symbol, interval, first_month, last_month):
+    """
+    Retrieves urls that we usually want our model to get
+    in a specific time frame
+    :param symbol: Stock ticker (GOOGL for example)
+    :param interval: Chosen time interval for data (15min for example)
+    :param first_month: Fist month we want our urls to refer to (YYYY-MM)
+    :param last_month: Last month we want our urls to refer to (YYYY-MM)
+    :return: List of lists of urls for Alpha Vantage API
+    [time][feature]
+    """
+    urls = []
+    first_date_str = first_month.split('-')
+    last_date_str = last_month.split('-')
+    first_date = datetime.datetime(int(first_date_str[0]),int(first_date_str[1]),1)
+    last_date = datetime.datetime(int(last_date_str[0]), int(last_date_str[1]),1)
+    timestamp = first_date
+    while timestamp <= last_date:
+        current_month_string = str(timestamp.year)+'-'+str(timestamp.month//10)+str(timestamp.month)
+        urls.append(get_urls(symbol, interval, current_month_string))
+        timestamp = timestamp + relativedelta(months=1)
 
     return urls
 
@@ -186,7 +188,8 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
     """
     Given a description of data and urls, it retrieves the list of
     data points we are interested in
-    :param url_list: list of Alpha Vintage API urls for our data
+    :param url_list: list of lists of Alpha Vintage API urls for our data
+    [time][feature]
     :param desc_list: list of names of databases
     :param data_point_desc_list: list of names of data points
     :param should_standardize: list of booleans for whether data should
@@ -205,36 +208,41 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
     retrieved_data = []
     retrieved_data_points = []
     current_response = None
-    for i in range(url_list.__len__()):
-        if i == 0 or not url_list[i].__eq__(url_list[i-1]):
-            if not use_filedata:
-                current_response = fetch_data(url_list[i])
-            else:
-                current_response = fetch_data_from_file(parse_filename(FILE_PATH+desc_list[i]))
+    for j in range(url_list.__len__()):
+        for i in range(url_list[j].__len__()):
+            if i == 0 or not url_list[j][i].__eq__(url_list[j][i-1]):
+                if not use_filedata:
+                    current_response = fetch_data(url_list[j][i])
+                else:
+                    current_response = fetch_data_from_file(parse_filename(FILE_PATH+desc_list[i]))
 
-            if save_data:
-                if use_filedata:
-                    raise Exception("use_filedata and save_data are mutually exclusive")
-                with open(parse_filename(FILE_PATH+desc_list[i]), WRITE_MODE) as json_file:
-                    json.dump(current_response, json_file)
+                if save_data:
+                    if use_filedata:
+                        raise Exception("use_filedata and save_data are mutually exclusive")
+                    with open(parse_filename(FILE_PATH+desc_list[i]+'/'), WRITE_MODE) as json_file:
+                        json.dump(current_response, json_file)
 
-        retrieved_data.append(current_response[desc_list[i]])
+            retrieved_data.append(current_response[desc_list[i]])
 
-        retrieved_data_points.append(
-            [float(data_point[data_point_desc_list[i]])
-             for data_point in retrieved_data[i].values()]
-        )
-        if should_standardize[i]:
-            retrieved_data_points[i] = standardize_list(retrieved_data_points[i])
+            retrieved_data_points.append(
+                [float(data_point[data_point_desc_list[i]])
+                 for data_point in retrieved_data[i].values()]
+            )
+            if should_standardize[i]:
+                retrieved_data_points[i] = standardize_list(retrieved_data_points[i])
 
     return retrieved_data_points
 
-def retrieve_data(use_filedata=False, save_data=True):
+def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2023-10', use_filedata=False, save_data=True):
     """
     Main API function in data.py
     Retrieve preselected data to fed into a model
     Feature types:
     Closing prices, volumes, RSI, Stoch, SMA, EMA
+    :param symbol: Stock ticker (GOOGL for example)
+    :param interval: Chosen time interval for data (15min for example)
+    :param first_month: First month we want our data from
+    :param last_month: Last month we want our data from
     :param use_filedata: If true, it loads data from a file
     (it had previously been imported from Alpha Vantage).
     Otherwise, it loads data from Alpha Vantage API
@@ -245,18 +253,22 @@ def retrieve_data(use_filedata=False, save_data=True):
     :return: model data X,y (numpy arrays).
     Processed and ready to be fed into a model
     """
-    urls = []
+    #urls = []
     desc_list = []
     data_point_desc_list = []
     should_standardize = []
 
-    urls.append(url_prices)
-    urls.append(url_prices)
-    urls.append(url_rsi)
-    urls.append(url_stoch)
-    urls.append(url_stoch)
-    urls.append(url_sma)
-    urls.append(url_ema)
+    urls = get_urls_time_range(symbol, interval, first_month, last_month)
+
+    #urls.append(url_prices)
+    #urls.append(url_prices)
+    #urls.append(url_rsi)
+    #urls.append(url_stoch)
+    #urls.append(url_stoch)
+    #urls.append(url_sma)
+    #urls.append(url_ema)
+
+    #urls = get_urls(symbol, interval, month)
 
     desc_list.append('Time Series (15min)')
     desc_list.append('Time Series (15min)')
@@ -287,7 +299,7 @@ def retrieve_data(use_filedata=False, save_data=True):
 
     return X,y
 
-X,y = retrieve_data(False, True)
+X,y = retrieve_data('GOOGL', '15min',first_month='2018-01' ,last_month='2023-10' , use_filedata=False, save_data=False)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)
