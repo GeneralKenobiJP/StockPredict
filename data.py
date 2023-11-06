@@ -98,7 +98,7 @@ def parse_filename(filename):
     :param filename: Initial intended filename (string)
     :return: Correct filename
     """
-    return filename.replace(":","-")
+    return filename.replace(":","-").replace(" ","_")
 def standardize_list(list):
     """
     Given a Python list of data of 1 type, standardize it
@@ -183,7 +183,7 @@ def get_features_np(feature_list):
 
     return X,y
 
-def retrieve_features(url_list, desc_list, data_point_desc_list, should_standardize,
+def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, should_standardize,
                       use_filedata=False, save_data=True):
     """
     Given a description of data and urls, it retrieves the list of
@@ -192,6 +192,7 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
     [time][feature]
     :param desc_list: list of names of databases
     :param data_point_desc_list: list of names of data points
+    :param first_month: First month we want our data from
     :param should_standardize: list of booleans for whether data should
     be standardized or not
     :param use_filedata: If true, it loads data from a file
@@ -208,6 +209,12 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
     retrieved_data = []
     retrieved_data_points = []
     current_response = None
+
+    first_date_str = first_month.split('-')
+    first_date = datetime.datetime(int(first_date_str[0]), int(first_date_str[1]), 1)
+    timestamp = first_date
+    current_month_string = first_month
+
     for j in range(url_list.__len__()):
         for i in range(url_list[j].__len__()):
             if i == 0 or not url_list[j][i].__eq__(url_list[j][i-1]):
@@ -219,17 +226,27 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, should_standard
                 if save_data:
                     if use_filedata:
                         raise Exception("use_filedata and save_data are mutually exclusive")
-                    with open(parse_filename(FILE_PATH+desc_list[i]+'/'), WRITE_MODE) as json_file:
+                    with open(parse_filename(FILE_PATH+desc_list[i]+'/'+current_month_string), WRITE_MODE) as json_file:
                         json.dump(current_response, json_file)
 
-            retrieved_data.append(current_response[desc_list[i]])
-
-            retrieved_data_points.append(
-                [float(data_point[data_point_desc_list[i]])
-                 for data_point in retrieved_data[i].values()]
-            )
+            if i!=0:
+                retrieved_data[i].extend(current_response[desc_list[i]])
+                retrieved_data_points[i].extend(
+                    [float(data_point[data_point_desc_list[i]])
+                     for data_point in retrieved_data[i].values()]
+                )
+            else:
+                retrieved_data.append(current_response[desc_list[i]])
+                retrieved_data_points.append(
+                    [float(data_point[data_point_desc_list[i]])
+                    for data_point in retrieved_data[i].values()]
+                )
             if should_standardize[i]:
                 retrieved_data_points[i] = standardize_list(retrieved_data_points[i])
+
+
+        timestamp = timestamp + relativedelta(months=1)
+        current_month_string = str(timestamp.year) + '-' + str(timestamp.month // 10) + str(timestamp.month)
 
     return retrieved_data_points
 
@@ -294,12 +311,12 @@ def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2
     should_standardize.append(True)
     should_standardize.append(True)
 
-    data_points = retrieve_features(urls, desc_list, data_point_desc_list, should_standardize)
+    data_points = retrieve_features(urls, desc_list, data_point_desc_list, first_month, should_standardize, use_filedata, save_data)
     X, y = get_features_np(data_points)
 
     return X,y
 
-X,y = retrieve_data('GOOGL', '15min',first_month='2018-01' ,last_month='2023-10' , use_filedata=False, save_data=False)
+X,y = retrieve_data('GOOGL', '15min',first_month='2018-01' ,last_month='2023-10' , use_filedata=False, save_data=True)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)
