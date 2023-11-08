@@ -1,4 +1,7 @@
 ### Imports
+from os import path
+from os import mkdir
+
 import time
 import datetime
 from dateutil.relativedelta import relativedelta
@@ -24,7 +27,7 @@ url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&inter
 url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
 
 ### ### ### CUSTOM FUNCTIONS
-def create_url(function, symbol, interval, month, time_period=None, series_type=None):
+def create_url(function, symbol, interval, month, time_period=None, series_type=None, output_size=None):
     """
     Creates an url query string for Alpha Vantage API, using provided parameters
     :param function: API function (TIME_SERIES_INTRADAY for example)
@@ -35,8 +38,12 @@ def create_url(function, symbol, interval, month, time_period=None, series_type=
     OPTIONAL
     :param series_type: close/open/high/low (typically close)
     OPTIONAL
+    :param output_size: 'compact' or 'full. Not used by technical indicators
+    OPTIONAL
     :return: URL for Alpha Vantage API
     """
+    if output_size is not None:
+        return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&outputsize={output_size}&apikey={api_key}'
     if time_period is None and series_type is None:
         return f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&month={month}&apikey={api_key}'
     if series_type is None:
@@ -57,8 +64,8 @@ def get_urls(symbol, interval, month):
     :return: List of urls for Alpha Vantage API
     """
     urls = []
-    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close'))
-    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close'))
+    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close', output_size='full'))
+    urls.append(create_url('TIME_SERIES_INTRADAY', symbol, interval, month, series_type='close', output_size='full'))
     urls.append(create_url('RSI', symbol, interval, month, time_period=40, series_type='close'))
     urls.append(create_url('STOCH', symbol, interval, month, time_period=40))
     urls.append(create_url('STOCH', symbol, interval, month, time_period=40))
@@ -85,7 +92,7 @@ def get_urls_time_range(symbol, interval, first_month, last_month):
     last_date = datetime.datetime(int(last_date_str[0]), int(last_date_str[1]),1)
     timestamp = first_date
     while timestamp <= last_date:
-        current_month_string = str(timestamp.year)+'-'+str(timestamp.month//10)+str(timestamp.month)
+        current_month_string = str(timestamp.year)+'-'+str(timestamp.month//10)+str(timestamp.month%10)
         urls.append(get_urls(symbol, interval, current_month_string))
         timestamp = timestamp + relativedelta(months=1)
 
@@ -216,6 +223,7 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, sh
     current_month_string = first_month
 
     for j in range(url_list.__len__()):
+        retrieved_data = []
         for i in range(url_list[j].__len__()):
             if i == 0 or not url_list[j][i].__eq__(url_list[j][i-1]):
                 if not use_filedata:
@@ -226,17 +234,20 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, sh
                 if save_data:
                     if use_filedata:
                         raise Exception("use_filedata and save_data are mutually exclusive")
-                    with open(parse_filename(FILE_PATH+desc_list[i]+'/'+current_month_string), WRITE_MODE) as json_file:
+                    this_file_path = parse_filename(FILE_PATH+desc_list[i])
+                    if not path.isdir(this_file_path):
+                        mkdir(this_file_path)
+                    with open(parse_filename(this_file_path+'/'+current_month_string), WRITE_MODE) as json_file:
                         json.dump(current_response, json_file)
 
-            if i!=0:
-                retrieved_data[i].extend(current_response[desc_list[i]])
+            retrieved_data.append(current_response[desc_list[i]])
+
+            if j!=0:
                 retrieved_data_points[i].extend(
                     [float(data_point[data_point_desc_list[i]])
                      for data_point in retrieved_data[i].values()]
                 )
             else:
-                retrieved_data.append(current_response[desc_list[i]])
                 retrieved_data_points.append(
                     [float(data_point[data_point_desc_list[i]])
                     for data_point in retrieved_data[i].values()]
@@ -246,7 +257,7 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, sh
 
 
         timestamp = timestamp + relativedelta(months=1)
-        current_month_string = str(timestamp.year) + '-' + str(timestamp.month // 10) + str(timestamp.month)
+        current_month_string = str(timestamp.year) + '-' + str(timestamp.month // 10) + str(timestamp.month%10)
 
     return retrieved_data_points
 
@@ -316,7 +327,7 @@ def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2
 
     return X,y
 
-X,y = retrieve_data('GOOGL', '15min',first_month='2018-01' ,last_month='2023-10' , use_filedata=False, save_data=True)
+X,y = retrieve_data('GOOGL', '15min',first_month='2023-06' ,last_month='2023-06' , use_filedata=False, save_data=True)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)
