@@ -190,11 +190,12 @@ def get_features_np(feature_list):
 
     return X,y
 
-def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, should_standardize,
+def retrieve_features(symbol, url_list, desc_list, data_point_desc_list, first_month, should_standardize,
                       use_filedata=False, save_data=True):
     """
     Given a description of data and urls, it retrieves the list of
     data points we are interested in
+    :param symbol: Stock ticker (GOOGL for example)
     :param url_list: list of lists of Alpha Vintage API urls for our data
     [time][feature]
     :param desc_list: list of names of databases
@@ -211,7 +212,7 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, sh
     True, be default.
     :return: list of data points
     """
-    FILE_PATH = "data/"
+    FILE_PATH = "data/"+symbol+"/"
     WRITE_MODE = "w"
     retrieved_data = []
     retrieved_data_points = []
@@ -229,7 +230,7 @@ def retrieve_features(url_list, desc_list, data_point_desc_list, first_month, sh
                 if not use_filedata:
                     current_response = fetch_data(url_list[j][i])
                 else:
-                    current_response = fetch_data_from_file(parse_filename(FILE_PATH+desc_list[i]))
+                    current_response = fetch_data_from_file(parse_filename(FILE_PATH+desc_list[i]+'/'+current_month_string))
 
                 if save_data:
                     if use_filedata:
@@ -327,7 +328,7 @@ def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2
 
     return X,y
 
-X,y = retrieve_data('GOOGL', '15min',first_month='2023-06' ,last_month='2023-06' , use_filedata=False, save_data=True)
+X,y = retrieve_data('GOOGL', '15min',first_month='2023-02' ,last_month='2023-05' , use_filedata=False, save_data=True)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)
