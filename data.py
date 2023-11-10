@@ -15,16 +15,7 @@ import config
 
 ### Alpha Vantage API handling
 api_key = config.api_key
-symbol = 'GOOGL'
-interval = '15min'  # Adjust the interval as needed
-outputsize = 'full'
-url_prices = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval={interval}&outputsize={outputsize}&apikey={api_key}'
-time_period = '40'
-series_type = 'close'
-url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&time_period={time_period}&apikey={api_key}'
-url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
+NUMBER_OF_FEATURES = 7
 
 ### ### ### CUSTOM FUNCTIONS
 def create_url(function, symbol, interval, month, time_period=None, series_type=None, output_size=None):
@@ -212,9 +203,8 @@ def retrieve_features(symbol, url_list, desc_list, data_point_desc_list, first_m
     True, be default.
     :return: list of data points
     """
-    FILE_PATH = "data/"+symbol+"/"
+    FILE_PATH = "data/"+str(symbol)+"/"
     WRITE_MODE = "w"
-    retrieved_data = []
     retrieved_data_points = []
     current_response = None
 
@@ -262,10 +252,17 @@ def retrieve_features(symbol, url_list, desc_list, data_point_desc_list, first_m
 
     return retrieved_data_points
 
+def get_number_of_features():
+    """
+    Get number of features we retrieve from data
+    :return: number of features for the model
+    """
+    return NUMBER_OF_FEATURES
+
 def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2023-10', use_filedata=False, save_data=True):
     """
     Main API function in data.py
-    Retrieve preselected data to fed into a model
+    Retrieve preselected data to be fed into a model
     Feature types:
     Closing prices, volumes, RSI, Stoch, SMA, EMA
     :param symbol: Stock ticker (GOOGL for example)
@@ -323,12 +320,12 @@ def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2
     should_standardize.append(True)
     should_standardize.append(True)
 
-    data_points = retrieve_features(urls, desc_list, data_point_desc_list, first_month, should_standardize, use_filedata, save_data)
+    data_points = retrieve_features(symbol, urls, desc_list, data_point_desc_list, first_month, should_standardize, use_filedata, save_data)
     X, y = get_features_np(data_points)
 
     return X,y
 
-X,y = retrieve_data('GOOGL', '15min',first_month='2023-02' ,last_month='2023-05' , use_filedata=False, save_data=True)
+X,y = retrieve_data('GOOGL', '15min',first_month='2023-02' ,last_month='2023-05' , use_filedata=True, save_data=False)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)

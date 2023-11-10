@@ -7,107 +7,15 @@ import matplotlib.pyplot as plt
 from sklearn import preprocessing
 import config
 
-### Alpha Vantage API handling
-api_key = config.api_key
-symbol = 'GOOGL'
-interval = '15min'  # Adjust the interval as needed
-outputsize = 'full'
-url = f'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval={interval}&outputsize={outputsize}&apikey={api_key}'
-time_period = '40'
-series_type = 'close'
-url_rsi = f'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-url_stoch = f'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&apikey={api_key}'
-url_sma = f'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
-url_ema = f'https://www.alphavantage.co/query?function=EMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&apikey={api_key}'
+import data
+
+X,y = data.retrieve_data('GOOGL', '15min', first_month='2023-02', last_month='2023-10' , use_filedata=True, save_data=False)
+num_feature_classes = data.get_number_of_features()
 
 ### CONSTANTS
-EPOCH_NUM = 250
-custom_learning_rate = 0.01
-
-### ### ### CUSTOM FUNCTIONS
-def standardize_list(list):
-    """
-    Given a Python list of data of 1 type, standardize it
-    using scikit-learn and return a standardized Python list
-    :param list:
-    list -- A Python list of data, 1 dimensional
-    :return:
-    A standardized Python list of Data, 1 dimensional,
-    having the length of list param
-    """
-
-    list_np = np.array(list).reshape(-1,1)
-    scaler = preprocessing.StandardScaler().fit(list_np)
-    list_np = scaler.transform(list_np)
-    return list_np.reshape(list.__len__()).tolist()
-
-### ### ### DATA
-
-### Fetch stock data
-response = requests.get(url)
-data = response.json()
-intraday_data = data['Time Series (15min)']
-response = requests.get(url_rsi)
-data = response.json()
-rsi_data = data['Technical Analysis: RSI']
-response = requests.get(url_stoch)
-data = response.json()
-stoch_data = data['Technical Analysis: STOCH']
-response = requests.get(url_sma)
-data = response.json()
-sma_data = data['Technical Analysis: SMA']
-response = requests.get(url_ema)
-data = response.json()
-ema_data = data['Technical Analysis: EMA']
-
-### Extract closing prices
-closing_prices = [float(data_point['4. close']) for data_point in intraday_data.values()]
-volumes = [float(data_point['5. volume']) for data_point in intraday_data.values()]
-rsi_indexes = [float(data_point['RSI']) for data_point in rsi_data.values()]
-stoch_indexes_k = [float(data_point['SlowK']) for data_point in stoch_data.values()]
-stoch_indexes_d = [float(data_point['SlowD']) for data_point in stoch_data.values()]
-sma_indexes = [float(data_point['SMA']) for data_point in sma_data.values()]
-ema_indexes = [float(data_point['EMA']) for data_point in ema_data.values()]
-
-### Prepare data for supervised learning
-X = []
-y = []
-window_size = 20  # Adjust the window size as needed
-num_feature_classes = 7
-length = min(len(closing_prices), len(volumes), len(rsi_indexes), len(stoch_indexes_d), len(stoch_indexes_k), len(sma_data))
-
-# Standardization of data
-volumes = standardize_list(volumes)
-rsi_indexes = standardize_list(rsi_indexes)
-stoch_indexes_k = standardize_list(stoch_indexes_k)
-stoch_indexes_d = standardize_list(stoch_indexes_d)
-sma_indexes = standardize_list(sma_indexes)
-ema_indexes = standardize_list(ema_indexes)
-
-for i in range(length - window_size):
-    feature_vector = []
-
-    # Append closing prices
-    feature_vector.append(closing_prices[i:i + window_size])
-
-    # Append volumes
-    feature_vector.append(volumes[i:i + window_size])
-
-    # Append RSI values
-    feature_vector.append(rsi_indexes[i:i + window_size])
-
-    # Append Stochastic Oscillator values (K and D)
-    feature_vector.append(stoch_indexes_k[i:i + window_size])
-    feature_vector.append(stoch_indexes_d[i:i + window_size])
-
-    feature_vector.append(sma_indexes[i:i + window_size])
-    feature_vector.append(ema_indexes[i:i + window_size])
-
-    X.append(feature_vector)
-    y.append(closing_prices[i+window_size])
-
-X = np.array(X)
-y = np.array(y)
+EPOCH_NUM = 50
+custom_learning_rate = 0.002
+window_size = 20
 
 ### Split data into training and testing sets
 split_ratio = 0.8
