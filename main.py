@@ -9,12 +9,12 @@ import config
 
 import data
 
-X,y = data.retrieve_data('GOOGL', '15min', first_month='2023-02', last_month='2023-10' , use_filedata=True, save_data=False)
+X,y = data.retrieve_data('GOOGL', '15min', first_month='2023-02', last_month='2023-10', use_filedata=True, save_data=False)
 num_feature_classes = data.get_number_of_features()
 
 ### CONSTANTS
-EPOCH_NUM = 50
-custom_learning_rate = 0.002
+EPOCH_NUM = 25
+custom_learning_rate = 0.02
 window_size = 20
 
 ### Split data into training and testing sets
@@ -31,9 +31,14 @@ model = tf.keras.Sequential([
     tf.keras.layers.Dense(256, activation = 'relu'),
     tf.keras.layers.Dense(64, activation='relu'),
     tf.keras.layers.Dense(32, activation='relu'),
+    #tf.keras.layers.LSTM(num_feature_classes,activation='tanh',recurrent_activation='sigmoid',use_bias=True),
+    tf.keras.layers.Dense(num_feature_classes, activation='relu'),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(1)  # Single output neuron for price prediction
 ])
+"""model = tf.keras.Sequential([
+    tf.keras.layers.LSTM(num_feature_classes, activation='tanh', recurrent_activation='sigmoid',use_bias=True)
+])"""
 
 # Compile the model
 custom_optimizer = tf.keras.optimizers.Adam(learning_rate=custom_learning_rate)

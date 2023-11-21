@@ -226,6 +226,8 @@ def retrieve_features(symbol, url_list, desc_list, data_point_desc_list, first_m
                     if use_filedata:
                         raise Exception("use_filedata and save_data are mutually exclusive")
                     this_file_path = parse_filename(FILE_PATH+desc_list[i])
+                    if not path.isdir(FILE_PATH):
+                        mkdir(FILE_PATH)
                     if not path.isdir(this_file_path):
                         mkdir(this_file_path)
                     with open(parse_filename(this_file_path+'/'+current_month_string), WRITE_MODE) as json_file:
@@ -325,7 +327,7 @@ def retrieve_data(symbol, interval='15min', first_month='2023-10', last_month='2
 
     return X,y
 
-X,y = retrieve_data('GOOGL', '15min',first_month='2023-02' ,last_month='2023-05' , use_filedata=True, save_data=False)
+X,y = retrieve_data('MSFT', '15min',first_month='2023-08' ,last_month='2023-10' , use_filedata=False, save_data=True)
 #X,y = retrieve_data(True, False)
 print(X)
 print(y)
